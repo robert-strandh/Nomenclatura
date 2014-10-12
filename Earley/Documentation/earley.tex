@@ -1,0 +1,754 @@
+\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage{alltt}
+\usepackage{moreverb}
+\usepackage{epsfig}
+\usepackage{makeidx}
+\usepackage{changebar}
+
+\setlength{\parskip}{0.3cm}
+\setlength{\parindent}{0cm}
+
+\def\inputfig#1{\input #1}
+\def\inputtex#1{\input #1}
+
+\input spec-macros.tex
+\def\ReadOnly{This function returns objects that reveal some internal state;
+do not modify those objects.\ }
+
+\def\ra{\rightarrow}
+
+\makeindex
+\begin{document}
+
+\section{Earley Parser}
+
+\subsection{Introduction}
+
+An Earley parser is a parser that can handle all context-free
+grammars, even ambiguous ones.  The worst-case complexity is $O(n^3)$
+where $n$ is the length of the input string.  However, this worst-case
+behavior is rare, and for a large class of reasonable grammars the
+worst-case complexity is linear, or at most quadratic.  
+
+In addition, an Earley parser is ideal for grammars that may change
+dynamically.  Earley parsing requires little or no preprocessing of
+the grammar, unlike LALR(k) parsers that must generate parser states
+at preprocessing time.
+
+\subsection{Terminology}
+
+The terminology we use is slightly different from that used by Earley.
+
+An \emph{input token} or \emph{token} for short is an object that is
+produced by the \emph{tokenizer} (also known as the \emph{scanner},
+but we shall use ``tokenizer'' in order to avoid confusion with the
+parser function called the \emph{scanner} by Earley), such as the
+number $123$, the identifier \texttt{hello} or a left parenthesis.
+
+A \emph{terminal symbol} or \emph{terminal} for short, is the
+\emph{type} of an input token such as \emph{variable} or
+\emph{number}.  How to organize tokens into types is sometimes a
+matter of taste, and often a terminal has only one instance (such as
+left parenthesis).  
+
+A \emph{nonterminal symbol} or \emph{nonterminal} for short, is a
+symbol that appears on the left-hand side of a grammar rule.
+
+A \emph{grammar rule} or a \emph{production} is defined as in the
+literature with a left-hand side in the form of a \emph{nonterminal}
+and a right-hand side which is a (possibly empty) sequence of
+terminals and nonterminals.  
+
+An \emph{item} is similar to a grammar rule, except that there is a
+dot either at the beginning, at the end, or between two symbols of the
+right-hand side.
+
+\subsection{How Earley parsing works}
+
+An Earley parser is defined on $n+1$ sequential \emph{states} where
+$n$ is the number of tokens of the input.  Each token determines the
+transition from one state to the next one in the sequence.
+
+For the purpose of this document, we shall name the states
+sequentially from $0$, whereas in a real implementation, they would be
+identified with their unique pointers. 
+
+A \emph{suffix} is a pair consisting of an item and a state number.
+The state number corresponds to the state in which the suffix was
+first introduced. 
+
+In the literature (and indeed by Earley himself), the transition from
+one state to the next one is described as the sequential invocation of
+three different parser functions, called respectively the
+\emph{completer}, the \emph{predictor}, and the \emph{scanner}.  As we
+shall see later on in this document, doing it this way requires a
+special treatment for so-called $\epsilon$-rules, i.e., rules with an
+empty sequence of symbols in the right-hand side.  We also give a
+better method that does not have this problem.  In this section,
+however, we stick to the traditional method.
+
+The completer is invoked only on suffixes where the dot of the
+corresponding item is at the end of the sequence of symbols.  We call
+such an item \emph{completer item} and the corresponding suffix
+\emph{completer suffix}.  
+
+Its function is as follows.  When it sees a completer suffix of the
+form $N \ra a_1 a_2 \ldots a_k \cdot, s$ where $N$ is a nonterminal,
+$a_1 a_2 \ldots a_k$ is a sequence of symbols and $s$ is the state in
+which the suffix $N \ra \cdot a_1 a_2 \ldots a_k, s$ was introduced by
+prediction, it searches state $s$ for suffixes of the form 
+$M \ra b_1 b_2 \ldots b_i \cdot N b_{i+2} \ldots b_l, t$.  For each
+such suffix, it adds the suffix $M \ra b_1 b_2 \ldots b_i N \cdot
+b_{i+2} \ldots b_l, t$ to the current state, unless it is already
+present.  Here, suffixes are considered equal if they have the same
+item and the same state of introduction.  
+
+The predictor is invoked only on suffixes where the dot of the
+corresponding item is followed by a nonterminal.  We call such an item
+\emph{predictor item} and the corresponding suffix \emph{predictor
+suffix}.
+
+Its function is as follows.  When it sees a predictor suffix of the
+form $M \ra b_1 b_2 \ldots b_i \cdot N b_{i+2} \ldots b_l, t$, it
+looks in the grammar for rules of the form $N \ra a_1 a_2 \ldots a_k$,
+and for each one, introduces the suffix $N \ra \cdot a_1 a_2 \ldots
+a_k, s$, where $s$ is the number of the current state, unless such a
+suffix is already present. 
+
+The scanner is invoked only on suffixes where the dot of the
+corresponding item is followed by a terminal.  We call such an item
+\emph{scanner item} and the corresponding suffix \emph{scanner
+suffix}.
+
+Its function is as follows.  When it sees a scanner suffix of the form
+$M \ra b_1 b_2 \ldots b_i \cdot T b_{i+2} \ldots b_l, t$, where $T$ is
+the terminal between the current state and the state following the
+current one, it adds the suffix $M \ra b_1 b_2 \ldots b_i T \cdot
+b_{i+2} \ldots b_l, t$ to the state following the current one.
+
+For the purpose of this section, we shall use a typical expression
+grammar with operations for addition and multiplication:
+
+\texttt{E $\ra$ T\\E $\ra$ E + T\\T $\ra$ F\\T $\ra$ T * F\\F $\ra$ V} 
+
+where \texttt{E} stands for \emph{expression}, \texttt{T} for
+\emph{term}, \texttt{F} for \emph{factor}, and \texttt{V} for
+\emph{variable}. 
+
+Parsing starts in state $0$ with an artificially created suffix with a
+predictor suffix having some arbitrary left-hand side, and a right-hand
+side that starts with the nonterminal we want the parser to recognize
+and that ends with some end-of-file marker such as \texttt{\$}.  The
+dot precedes the first symbol of the right-hand side.  Here, we are
+going to use \texttt{\% $\rightarrow$$\cdot$E \$} as the artificial
+suffix. 
+
+Parsing stops in state $n$, which is detected by the fact that the
+tokenizer returns end-of-file.  If in that state there exists a
+scanner suffix (assuming the EOF marker is a terminal) of the form
+\texttt{\% $\rightarrow$ E$\cdot$\$}, then parsing was successful.  If
+not, parsing failed.  
+
+Here, we represent parser states and tokens as rows of a table.  The
+first row of table represents state $0$.  Thus, the initial state of
+the parser looks like this:
+
+\begin{tabular}{|l|l|l|l|}
+\hline
+token/state & Predictor suffixes & Completer suffixes & Scanner suffixes\\
+\hline
+0      & \texttt{\% $\rightarrow$$\cdot$E \$} & & \\
+\hline
+\texttt{V} &  & &\\
+\hline
+\end{tabular}
+
+We always run first the completer, then the predictor, and finally the
+scanner.  Here there are no completer suffixes, so we are done running
+the completer.  Running the predictor, we get two new suffixes from
+the rules with a left-hand side of \texttt{E}.
+
+\begin{tabular}{|l|l|l|l|}
+\hline
+token/state & Predictor suffixes & Completer suffixes & Scanner suffixes\\
+\hline
+0     & \texttt{\% $\ra$$\cdot$E \$,0} & & \\
+      & \texttt{E $\ra$$\cdot$T,0} & & \\
+      & \texttt{E $\ra$$\cdot$E + T},0 & & \\
+\hline
+\texttt{V}     &  & &\\
+\hline
+\end{tabular}
+
+One of the newly introduced suffixes again has an \texttt{E} after the
+dot so no new suffixes are introduced from it.  Predicting from the
+other one, we introduce suffixes with \texttt{T} on the left-hand
+side. 
+
+\begin{tabular}{|l|l|l|l|}
+\hline
+token/state & Predictor suffixes & Completer suffixes & Scanner suffixes\\
+\hline
+0     & \texttt{\% $\ra$$\cdot$E \$,0} & & \\
+      & \texttt{E $\ra$$\cdot$T,0} & & \\
+      & \texttt{E $\ra$$\cdot$E + T,0} & & \\
+      & \texttt{T $\ra$$\cdot$F,0} & & \\
+      & \texttt{T $\ra$$\cdot$T * F,0} & & \\
+\hline
+\texttt{V}     &  & &\\
+\hline
+\end{tabular}
+
+Finally, predicting from the suffix with a \texttt{F} after the dot,
+we introduce a scanner suffix (since the symbol after the dot is a terminal).
+
+\begin{tabular}{|l|l|l|l|}
+\hline
+token/state & Predictor suffixes & Completer suffixes & Scanner suffixes\\
+\hline
+0     & \texttt{\% $\ra$$\cdot$E \$,0} & & \texttt{F $\ra$$\cdot$V,0}\\
+      & \texttt{E $\ra$$\cdot$T,0} & & \\
+      & \texttt{E $\ra$$\cdot$E + T,0} & & \\
+      & \texttt{T $\ra$$\cdot$F,0} & & \\
+      & \texttt{T $\ra$$\cdot$T * F,0} & & \\
+\hline
+\texttt{V}     &  & &\\
+\hline
+\end{tabular}
+
+We are now ready to run the scanner.  The next input token is
+\texttt{V}, so the scanner suffix with a \texttt{V} after the dot
+generates a completer suffix in state 1. 
+
+\begin{tabular}{|l|l|l|l|}
+\hline
+token/state & Predictor suffixes & Completer suffixes & Scanner suffixes\\
+\hline
+ 0    & \texttt{\% $\ra$$\cdot$E \$,0} & & \texttt{F $\ra$$\cdot$V,0}\\
+      & \texttt{E $\ra$$\cdot$T,0} & & \\
+      & \texttt{E $\ra$$\cdot$E + T,0} & & \\
+      & \texttt{T $\ra$$\cdot$F,0} & & \\
+      & \texttt{T $\ra$$\cdot$T * F,0} & & \\
+\hline
+\texttt{V}     &  & &\\
+\hline
+1     &  &  \texttt{F $\ra$ V$\cdot$,0}& \\
+\hline
+\texttt{+} &  & &\\
+\hline
+\end{tabular}
+
+We must now run the completer.  We should look for suffixes with an
+\texttt{F} after the dot in state 0.  There is one, namely \texttt{T
+$\ra$$\cdot$F,0} which generates the completer suffix \texttt{T $\ra$
+F$\cdot$,0} in state 1.
+
+\begin{tabular}{|l|l|l|l|}
+\hline
+token/state & Predictor suffixes & Completer suffixes & Scanner suffixes\\
+\hline
+0     & \texttt{\% $\ra$$\cdot$E \$,0} & & \texttt{F $\ra$$\cdot$V,0}\\
+      & \texttt{E $\ra$$\cdot$T,0} & & \\
+      & \texttt{E $\ra$$\cdot$E + T,0} & & \\
+      & \texttt{T $\ra$$\cdot$F,0} & & \\
+      & \texttt{T $\ra$$\cdot$T * F,0} & & \\
+\hline
+\texttt{V} &  & &\\
+\hline
+1     &  & \texttt{F $\ra$ V$\cdot$,0}& \\
+      &  & \texttt{T $\ra$ F$\cdot$,0}& \\
+\hline
+\texttt{+} &  & &\\
+\hline
+\end{tabular}
+
+Completing from the newly introduced suffix generates another completer
+suffix, namely \texttt{E $\ra$ T$\cdot$,0} and a scanner suffix: 
+\texttt{T $\ra$ T$\cdot$* F,0}.
+
+\begin{tabular}{|l|l|l|l|}
+\hline
+token/state & Predictor suffixes & Completer suffixes & Scanner suffixes\\
+\hline
+0     & \texttt{\% $\ra$$\cdot$E \$,0} & & \texttt{F $\ra$$\cdot$V,0}\\
+      & \texttt{E $\ra$$\cdot$T,0} & & \\
+      & \texttt{E $\ra$$\cdot$E + T,0} & & \\
+      & \texttt{T $\ra$$\cdot$F,0} & & \\
+      & \texttt{T $\ra$$\cdot$T * F,0} & & \\
+\hline
+\texttt{V} &  & &\\
+\hline
+1     &  & \texttt{F $\ra$ V$\cdot$,0}& \texttt{T $\ra$ T$\cdot$* F,0}\\
+      &  & \texttt{T $\ra$ F$\cdot$,0}& \\
+      &  & \texttt{E $\ra$ T$\cdot$,0}& \\
+\hline
+\texttt{+} &  & &\\
+\hline
+\end{tabular}
+
+Running the completer again gives us the scanner suffixes \texttt{\%
+  $\ra$ E$\cdot$\$,0} and \texttt{E $\ra$ E$\cdot$+ T,0}
+
+\begin{tabular}{|l|l|l|l|}
+\hline
+token/state & Predictor suffixes & Completer suffixes & Scanner suffixes\\
+\hline
+0     & \texttt{\% $\ra$$\cdot$E \$,0} & & \texttt{F $\ra$$\cdot$V,0}\\
+      & \texttt{E $\ra$$\cdot$T,0} & & \\
+      & \texttt{E $\ra$$\cdot$E + T,0} & & \\
+      & \texttt{T $\ra$$\cdot$F,0} & & \\
+      & \texttt{T $\ra$$\cdot$T * F,0} & & \\
+\hline
+\texttt{V} &  & &\\
+\hline
+1     &  & \texttt{F $\ra$ V$\cdot$,0}& \texttt{T $\ra$ T$\cdot$* F,0}\\
+      &  & \texttt{T $\ra$ F$\cdot$,0}& \texttt{\% $\ra$ E$\cdot$\$,0}\\
+      &  & \texttt{E $\ra$ T$\cdot$,0}& \texttt{E $\ra$ E$\cdot$+ T,0}\\
+\hline
+\texttt{+} &  & &\\
+\hline
+\end{tabular}
+
+There are no predictor suffixes in state 1, so we run the scanner.  The
+input symbol is \texttt{+} so only the suffix \texttt{E $\ra$
+  E$\cdot$+ T,0} works, and generates the predictor suffix \texttt{E $\ra$ E
+  +$\cdot$T,0} in state 2. 
+
+\begin{tabular}{|l|l|l|l|}
+\hline
+token/state & Predictor suffixes & Completer suffixes & Scanner suffixes\\
+\hline
+0     & \texttt{\% $\ra$$\cdot$E \$,0} & & \texttt{F $\ra$$\cdot$V,0}\\
+      & \texttt{E $\ra$$\cdot$T,0} & & \\
+      & \texttt{E $\ra$$\cdot$E + T,0} & & \\
+      & \texttt{T $\ra$$\cdot$F,0} & & \\
+      & \texttt{T $\ra$$\cdot$T * F,0} & & \\
+\hline
+\texttt{V} &  & &\\
+\hline
+1     &  & \texttt{F $\ra$ V$\cdot$,0}& \texttt{T $\ra$ T$\cdot$* F,0} \\
+      &  & \texttt{T $\ra$ F$\cdot$,0}& \texttt{E $\ra$ E$\cdot$+ T,0} \\
+      &  & \texttt{E $\ra$ T$\cdot$,0}& \\
+\hline
+\texttt{+} &  & &\\
+\hline
+ 2    & \texttt{E $\ra$ E +$\cdot$T,0} & & \\
+\hline 
+\texttt{V} &  & &\\
+\hline
+\end{tabular}
+
+There are no completer suffixes in state 2, so we go directly to
+running the predictor.  Predicting from the nonterminal \texttt{T}, we
+get two more predictor suffixes, namely \texttt{T $\ra$$\cdot$F,2} and
+\texttt{T $\ra$$\cdot$T * F,2} as well as the scanner suffix \texttt{F
+  $\ra$$\cdot$V,2}. 
+
+\begin{tabular}{|l|l|l|l|}
+\hline
+token/state & Predictor suffixes & Completer suffixes & Scanner suffixes\\
+\hline
+0     & \texttt{\% $\ra$$\cdot$E \$,0} & & \texttt{F $\ra$$\cdot$V,0}\\
+      & \texttt{E $\ra$$\cdot$T,0} & & \\
+      & \texttt{E $\ra$$\cdot$E + T,0} & & \\
+      & \texttt{T $\ra$$\cdot$F,0} & & \\
+      & \texttt{T $\ra$$\cdot$T * F,0} & & \\
+\hline
+\texttt{V} &  & &\\
+\hline
+1     &  & \texttt{F $\ra$ V$\cdot$,0}& \texttt{T $\ra$ T$\cdot$* F,0} \\
+      &  & \texttt{T $\ra$ F$\cdot$,0}& \texttt{E $\ra$ E$\cdot$+ T,0} \\
+      &  & \texttt{E $\ra$ T$\cdot$,0}& \\
+\hline
+\texttt{+} &  & &\\
+\hline
+2     & \texttt{E $\ra$ E +$\cdot$T} & & \texttt{F $\ra$$\cdot$V,2}\\
+      & \texttt{T $\ra$$\cdot$F,2} & & \\
+      & \texttt{T $\ra$$\cdot$T * F,2} & & \\
+\hline 
+\texttt{V} &  & &\\
+\hline
+\end{tabular}
+
+
+We now run the scanner.  The input token is a \texttt{V}, so we get
+the following situation:
+
+\begin{tabular}{|l|l|l|l|}
+\hline
+token/state & Predictor suffixes & Completer suffixes & Scanner suffixes\\
+\hline
+0     & \texttt{\% $\ra$$\cdot$E \$,0} & & \texttt{F $\ra$$\cdot$V,0}\\
+      & \texttt{E $\ra$$\cdot$T,0} & & \\
+      & \texttt{E $\ra$$\cdot$E + T,0} & & \\
+      & \texttt{T $\ra$$\cdot$F,0} & & \\
+      & \texttt{T $\ra$$\cdot$T * F,0} & & \\
+\hline
+\texttt{V} &  & &\\
+\hline
+1     &  & \texttt{F $\ra$ V$\cdot$,0}& \texttt{T $\ra$ T$\cdot$* F,0} \\
+      &  & \texttt{T $\ra$ F$\cdot$,0}& \texttt{E $\ra$ E$\cdot$+ T,0} \\
+      &  & \texttt{E $\ra$ T$\cdot$,0}& \\
+\hline
+\texttt{+} &  & &\\
+\hline
+2     & \texttt{E $\ra$ E +$\cdot$T,0} & & \texttt{F $\ra$$\cdot$V,2}\\
+      & \texttt{T $\ra$$\cdot$F,2} & & \\
+      & \texttt{T $\ra$$\cdot$T * F,2} & & \\
+\hline 
+\texttt{V} & & &\\
+\hline
+3     &  &  \texttt{F $\ra$ V$\cdot$,2}& \\
+\hline
+\texttt{*} & & & \\
+\hline
+\end{tabular}
+
+Running the completer, we must look for predictor suffixes in state $2$
+with a \texttt{F} after the dot.  We find \texttt{T $\ra$$\cdot$F,2},
+which generates the new completer suffix \texttt{T $\ra$ F$\cdot$,2}.
+Running it again on this new suffix generates suffixes \texttt{E $\ra$
+E + T$\cdot$,0} (completer) and \texttt{T $\ra$ T$\cdot$* F,2}
+(scanner).  The new completer suffix says we must go back to state $0$
+and look for predictor suffixes with an \texttt{E} following the dot.
+We find \texttt{\% $\ra$$\cdot$E \$,0}, which will generate the
+scanner suffix \texttt{\% $\ra$ E$\cdot$\$,0} and \texttt{E
+  $\ra$$\cdot$E + T,0} which will generate the scanner suffix 
+\texttt{E $\ra$ E$\cdot$+ T,0}
+
+\begin{tabular}{|l|l|l|l|}
+\hline
+token/state & Predictor suffixes & Completer suffixes & Scanner suffixes\\
+\hline
+0     & \texttt{\% $\ra$$\cdot$E \$,0} & & \texttt{F $\ra$$\cdot$V,0}\\
+      & \texttt{E $\ra$$\cdot$T,0} & & \\
+      & \texttt{E $\ra$$\cdot$E + T,0} & & \\
+      & \texttt{T $\ra$$\cdot$F,0} & & \\
+      & \texttt{T $\ra$$\cdot$T * F,0} & & \\
+\hline
+\texttt{V} &  & &\\
+\hline
+1     &  & \texttt{F $\ra$ V$\cdot$,0}& \texttt{T $\ra$ T$\cdot$* F,0} \\
+      &  & \texttt{T $\ra$ F$\cdot$,0}& \texttt{E $\ra$ E$\cdot$+ T,0} \\
+      &  & \texttt{E $\ra$ T$\cdot$,0}& \\
+\hline
+\texttt{+} &  & &\\
+\hline
+2     & \texttt{E $\ra$ E +$\cdot$T,0} & & \texttt{F $\ra$$\cdot$V,2}\\
+      & \texttt{T $\ra$$\cdot$F,2} & & \\
+      & \texttt{T $\ra$$\cdot$T * F,2} & & \\
+\hline 
+\texttt{V} & & &\\
+\hline
+3     &  &  \texttt{F $\ra$ V$\cdot$,2}& \texttt{T $\ra$ T$\cdot$* F,2}\\
+      &  &  \texttt{T $\ra$ F$\cdot$,2}& \texttt{\% $\ra$ E$\cdot$\$,0}\\
+      &  &  \texttt{E $\ra$ E + T$\cdot$,0}& \texttt{E $\ra$ E$\cdot$+ T,0}\\
+\hline
+\texttt{*} & & & \\
+\hline
+\end{tabular}
+
+There are no predictor suffixes, so we run the scanner.  The input is
+\texttt{*}, so only the scanner suffix \texttt{T $\ra$ T$\cdot$* F,2}
+works.  This gives the following situation:
+
+\begin{tabular}{|l|l|l|l|}
+\hline
+token/state & Predictor suffixes & Completer suffixes & Scanner suffixes\\
+\hline
+0     & \texttt{\% $\ra$$\cdot$E \$,0} & & \texttt{F $\ra$$\cdot$V,0}\\
+      & \texttt{E $\ra$$\cdot$T,0} & & \\
+      & \texttt{E $\ra$$\cdot$E + T,0} & & \\
+      & \texttt{T $\ra$$\cdot$F,0} & & \\
+      & \texttt{T $\ra$$\cdot$T * F,0} & & \\
+\hline
+\texttt{V} &  & &\\
+\hline
+1     &  & \texttt{F $\ra$ V$\cdot$,0}& \texttt{T $\ra$ T$\cdot$* F,0} \\
+      &  & \texttt{T $\ra$ F$\cdot$,0}& \texttt{E $\ra$ E$\cdot$+ T,0} \\
+      &  & \texttt{E $\ra$ T$\cdot$,0}& \\
+\hline
+\texttt{+} &  & &\\
+\hline
+2     & \texttt{E $\ra$ E +$\cdot$T,0} & & \texttt{F $\ra$$\cdot$V,2}\\
+      & \texttt{T $\ra$$\cdot$F,2} & & \\
+      & \texttt{T $\ra$$\cdot$T * F,2} & & \\
+\hline 
+\texttt{V} & & &\\
+\hline
+3     &  &  \texttt{F $\ra$ V$\cdot$,2}& \texttt{T $\ra$ T$\cdot$* F,2}\\
+      &  &  \texttt{T $\ra$ F$\cdot$,2}& \texttt{\% $\ra$ E$\cdot$\$,0}\\
+      &  &  \texttt{E $\ra$ E + T$\cdot$,0}& \texttt{E $\ra$ E$\cdot$+ T,0}\\
+\hline
+\texttt{*} & & & \\
+\hline
+4     & \texttt{T $\ra$ T *$\cdot$F,2} & & \\
+\hline
+\texttt{V} &  & &\\
+\hline
+\end{tabular}
+
+There are no completer suffixes, so we run the predictor.  We get:
+
+\begin{tabular}{|l|l|l|l|}
+\hline
+token/state & Predictor suffixes & Completer suffixes & Scanner suffixes\\
+\hline
+0     & \texttt{\% $\ra$$\cdot$E \$,0} & & \texttt{F $\ra$$\cdot$V,0}\\
+      & \texttt{E $\ra$$\cdot$T,0} & & \\
+      & \texttt{E $\ra$$\cdot$E + T,0} & & \\
+      & \texttt{T $\ra$$\cdot$F,0} & & \\
+      & \texttt{T $\ra$$\cdot$T * F,0} & & \\
+\hline
+\texttt{V} &  & &\\
+\hline
+1     &  & \texttt{F $\ra$ V$\cdot$,0}& \texttt{T $\ra$ T$\cdot$* F,0} \\
+      &  & \texttt{T $\ra$ F$\cdot$,0}& \texttt{E $\ra$ E$\cdot$+ T,0} \\
+      &  & \texttt{E $\ra$ T$\cdot$,0}& \\
+\hline
+\texttt{+} &  & &\\
+\hline
+2     & \texttt{E $\ra$ E +$\cdot$T,0} & & \texttt{F $\ra$$\cdot$V,2}\\
+      & \texttt{T $\ra$$\cdot$F,2} & & \\
+      & \texttt{T $\ra$$\cdot$T * F,2} & & \\
+\hline 
+\texttt{V} & & &\\
+\hline
+3     &  &  \texttt{F $\ra$ V$\cdot$,2}& \texttt{T $\ra$ T$\cdot$* F,2}\\
+      &  &  \texttt{T $\ra$ F$\cdot$,2}& \texttt{\% $\ra$ E$\cdot$\$,0}\\
+      &  &  \texttt{E $\ra$ E + T$\cdot$,0}& \texttt{E $\ra$ E$\cdot$+ T,0}\\
+\hline
+\texttt{*} & & & \\
+\hline
+4     & \texttt{T $\ra$ T *$\cdot$F,2} & & \texttt{F $\ra$$\cdot$V,4}\\
+\hline
+\texttt{V} &  & &\\
+\hline
+\end{tabular}
+
+Now we run the scanner.  The input it \texttt{V}, so we get the
+following situation:
+
+\begin{tabular}{|l|l|l|l|}
+\hline
+token/state & Predictor suffixes & Completer suffixes & Scanner suffixes\\
+\hline
+0     & \texttt{\% $\ra$$\cdot$E \$,0} & & \texttt{F $\ra$$\cdot$V,0}\\
+      & \texttt{E $\ra$$\cdot$T,0} & & \\
+      & \texttt{E $\ra$$\cdot$E + T,0} & & \\
+      & \texttt{T $\ra$$\cdot$F,0} & & \\
+      & \texttt{T $\ra$$\cdot$T * F,0} & & \\
+\hline
+\texttt{V} &  & &\\
+\hline
+1     &  & \texttt{F $\ra$ V$\cdot$,0}& \texttt{T $\ra$ T$\cdot$* F,0} \\
+      &  & \texttt{T $\ra$ F$\cdot$,0}& \texttt{E $\ra$ E$\cdot$+ T,0} \\
+      &  & \texttt{E $\ra$ T$\cdot$,0}& \\
+\hline
+\texttt{+} &  & &\\
+\hline
+2     & \texttt{E $\ra$ E +$\cdot$T,0} & & \texttt{F $\ra$$\cdot$V,2}\\
+      & \texttt{T $\ra$$\cdot$F,2} & & \\
+      & \texttt{T $\ra$$\cdot$T * F,2} & & \\
+\hline 
+\texttt{V} & & &\\
+\hline
+3     &  &  \texttt{F $\ra$ V$\cdot$,2}& \texttt{T $\ra$ T$\cdot$* F,2}\\
+      &  &  \texttt{T $\ra$ F$\cdot$,2}& \texttt{\% $\ra$ E$\cdot$\$,0}\\
+      &  &  \texttt{E $\ra$ E + T$\cdot$,0}& \texttt{E $\ra$ E$\cdot$+ T,0}\\
+\hline
+\texttt{*} & & & \\
+\hline
+4     & \texttt{T $\ra$ T *$\cdot$F,2} & & \texttt{F $\ra$$\cdot$V,4}\\
+\hline
+\texttt{V} & & &\\
+\hline
+5     & & \texttt{F $\ra$ V$\cdot$,4} &\\
+\hline
+\texttt{\$} &  & &\\
+\hline
+\end{tabular}
+
+We must now run the completer which generates the new completer suffix
+\texttt{T $\ra$ T * F$\cdot$,2}.  Going to state $2$ to look for a
+\texttt{T}, we generate \texttt{E $\ra$ E + T$\cdot$,0} and \texttt{T
+  $\ra$ T$\cdot$* F,2}.  Going to state $0$ to look for \texttt{E} we
+generate \texttt{\% $\ra$ E$\cdot$\$,0} and \texttt{E $\ra$ E$\cdot$+
+  T,0}.  We now have the following situation:
+
+
+\begin{tabular}{|l|l|l|l|}
+\hline
+token/state & Predictor suffixes & Completer suffixes & Scanner suffixes\\
+\hline
+0     & \texttt{\% $\ra$$\cdot$E \$,0} & & \texttt{F $\ra$$\cdot$V,0}\\
+      & \texttt{E $\ra$$\cdot$T,0} & & \\
+      & \texttt{E $\ra$$\cdot$E + T,0} & & \\
+      & \texttt{T $\ra$$\cdot$F,0} & & \\
+      & \texttt{T $\ra$$\cdot$T * F,0} & & \\
+\hline
+\texttt{V} &  & &\\
+\hline
+1     &  & \texttt{F $\ra$ V$\cdot$,0}& \texttt{T $\ra$ T$\cdot$* F,0} \\
+      &  & \texttt{T $\ra$ F$\cdot$,0}& \texttt{E $\ra$ E$\cdot$+ T,0} \\
+      &  & \texttt{E $\ra$ T$\cdot$,0}& \\
+\hline
+\texttt{+} &  & &\\
+\hline
+2     & \texttt{E $\ra$ E +$\cdot$T,0} & & \texttt{F $\ra$$\cdot$V,2}\\
+      & \texttt{T $\ra$$\cdot$F,2} & & \\
+      & \texttt{T $\ra$$\cdot$T * F,2} & & \\
+\hline 
+\texttt{V} & & &\\
+\hline
+3     &  &  \texttt{F $\ra$ V$\cdot$,2}& \texttt{T $\ra$ T$\cdot$* F,2}\\
+      &  &  \texttt{T $\ra$ F$\cdot$,2}& \texttt{\% $\ra$ E$\cdot$\$,0}\\
+      &  &  \texttt{E $\ra$ E + T$\cdot$,0}& \texttt{E $\ra$ E$\cdot$+ T,0}\\
+\hline
+\texttt{*} & & & \\
+\hline
+4     & \texttt{T $\ra$ T *$\cdot$F,2} & & \texttt{F $\ra$$\cdot$V,4}\\
+\hline
+\texttt{V} & & &\\
+\hline
+5     & & \texttt{F $\ra$ V$\cdot$,4} & \texttt{T $\ra$ T$\cdot$* F,2}\\
+      & & \texttt{T $\ra$ T * F$\cdot$,2} & \texttt{\% $\ra$ E$\cdot$\$,0}\\
+      & & \texttt{E $\ra$ E + T$\cdot$,0} & \texttt{E $\ra$ E$\cdot$+ T,0}\\
+\hline
+\texttt{\$} &  & &\\
+\hline
+\end{tabular}
+
+We are now at end-of-file of the input.  The suffix \texttt{\% $\ra$
+  E$\cdot$\$,0} is present, so the parse was successful. 
+
+\subsection{Dealing with $\epsilon$-rules}
+
+\subsection{Ambiguous grammars}
+
+Consider the grammar:
+
+\texttt{E $\ra$ A B\\A $\ra$ x\\A $\ra$ x y\\B $\ra$ z\\B $\ra$ y z} 
+
+This grammar is ambiguous, because the input \texttt{x y z} can be
+generated either as \texttt{E $\ra$ A B $\ra$ x B $\ra$ x y z} or as 
+\texttt{E $\ra$ A B $\ra$ x y B $\ra$ x y z}.  
+
+Let us see what happens when we give the Earley parser an ambiguous
+grammar like that. 
+
+\begin{tabular}{|l|l|l|l|}
+\hline
+token/state & Predictor suffixes & Completer suffixes & Scanner suffixes\\
+\hline
+0      & \texttt{\% $\rightarrow$$\cdot$E\$ \$} & & \\
+\hline
+\texttt{x} &  & &\\
+\hline
+\end{tabular}
+
+\begin{tabular}{|l|l|l|l|}
+\hline
+token/state & Predictor suffixes & Completer suffixes & Scanner suffixes\\
+\hline
+0 & \texttt{\% $\rightarrow$$\cdot$E \$,0 \$} & & \texttt{A $\ra$$\cdot$x,0} \\
+  & \texttt{E $\ra$$\cdot$A B,0} & & \texttt{A $\ra$$\cdot$x y,0}\\
+\hline
+\texttt{x} &  & &\\
+\hline
+1 & \texttt{E $\ra$ A$\cdot$B,0}& \texttt{A $\ra$ x$\cdot$,0} & \texttt{A $\ra$ x$\cdot$y,0}\\
+  & & & \texttt{B $\ra$$\cdot$z, 1}\\
+  & & & \texttt{B $\ra$$\cdot$y z, 1}\\
+\hline
+\texttt{y} &  & &\\
+\hline
+\end{tabular}
+
+\begin{tabular}{|l|l|l|l|}
+\hline
+token/state & Predictor suffixes & Completer suffixes & Scanner suffixes\\
+\hline
+0 & \texttt{\% $\rightarrow$$\cdot$E \$,0 \$} & & \texttt{A $\ra$$\cdot$x,0} \\
+  & \texttt{E $\ra$$\cdot$A B,0} & & \texttt{A $\ra$$\cdot$x y,0}\\
+\hline
+\texttt{x} &  & &\\
+\hline
+1 & \texttt{E $\ra$ A$\cdot$B,0}& \texttt{A $\ra$ x$\cdot$,0} & \texttt{A $\ra$ x$\cdot$y,0}\\
+  & & & \texttt{B $\ra$$\cdot$z, 1}\\
+  & & & \texttt{B $\ra$$\cdot$y z, 1}\\
+\hline
+\texttt{y} &  & &\\
+\hline
+2 & \texttt{E $\ra$ A$\cdot$B,0} & \texttt{A $\ra$ x y$\cdot$,0} & \texttt{B $\ra$ y$\cdot$z, 1}\\
+  &  & & \texttt{B $\ra$$\cdot$z, 2}\\
+  &                              & & \texttt{B $\ra$$\cdot$y z, 2}\\
+\hline
+\texttt{z} &  & &\\
+\hline
+\end{tabular}
+
+\begin{tabular}{|l|l|l|l|}
+\hline
+token/state & Predictor suffixes & Completer suffixes & Scanner suffixes\\
+\hline
+0 & \texttt{\% $\rightarrow$$\cdot$E \$,0 \$} & & \texttt{A $\ra$$\cdot$x,0} \\
+  & \texttt{E $\ra$$\cdot$A B,0} & & \texttt{A $\ra$$\cdot$x y,0}\\
+\hline
+\texttt{x} &  & &\\
+\hline
+1 & \texttt{E $\ra$ A$\cdot$B,0}& \texttt{A $\ra$ x$\cdot$,0} & \texttt{A $\ra$ x$\cdot$y,0}\\
+  & & & \texttt{B $\ra$$\cdot$z, 1}\\
+  & & & \texttt{B $\ra$$\cdot$y z, 1}\\
+\hline
+\texttt{y} &  & &\\
+\hline
+2 & \texttt{E $\ra$ A$\cdot$B,0} & \texttt{A $\ra$ x y$\cdot$,0} & \texttt{B $\ra$ y$\cdot$z, 1}\\
+  &  & & \texttt{B $\ra$$\cdot$z, 2}\\
+  &                              & & \texttt{B $\ra$$\cdot$y z, 2}\\
+\hline
+\texttt{z} &  & &\\
+\hline
+3 & & \texttt{B $\ra$ y z$\cdot$, 1} & \\
+  & & \texttt{B $\ra$ z$\cdot$, 2} & \\
+  & & \texttt{E $\ra$ A B$\cdot$,0} &\\
+  & & \texttt{\% $\rightarrow$ E$\cdot$\$,0} &\\
+\hline
+\end{tabular}
+
+The parse is successful.  Notice how the suffix \texttt{E $\ra$ A
+  B$\cdot$,0} in state $3$ was generated by the completer in two
+  different ways, from \texttt{B $\ra$ y z$\cdot$, 1} and \texttt{B
+  $\ra$ z$\cdot$, 2} respectively.  This is the general pattern for
+  ambiguities.  Whenever a suffix in two or more different ways by the
+  completer there is an ambiguity.  
+
+Ambiguities are bad because they give rise to multiple parse trees for
+a single grammar on a single input sequence.  In fact, there can be
+exponentially many parse trees compared to the size of the grammar.
+To see that, consider the grammar:
+
+\texttt{E $\ra$ N N N N N N N N\\N $\ra$ A\\N $\ra$ B\\A $\ra$ x\\B $\ra$ x} 
+
+We can avoid the ambiguity problem by not trying to build \emph{all}
+the parse trees, but only \emph{one}.  
+
+\subsection{Building the parse tree}
+
+\section{Protocols}
+
+\Defclass {grammar}
+
+\Defclass {rule}
+
+\Defgeneric {rules} {grammar}
+
+Given a grammar, returns a list of the rules of the
+grammar. {\ReadOnly}
+
+\Defgeneric {target} {rule}
+
+Given a rule, returns the target symbol.  
+
+
+\end{document}
