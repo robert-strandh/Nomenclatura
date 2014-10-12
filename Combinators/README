@@ -1,0 +1,8 @@
+The code in here was developed as part of SICL for parsing LOOP
+clauses.  In order to turn it into a different system, it at least
+needs a "packages" file and an ASDF system definition.
+
+Currently, it uses a list of tokens as input to the parser.  Perhaps
+there is some concept of a stream that one can use instead.  It can
+not be an ordinary Common Lisp stream because the parser needs
+unbounded backup.
