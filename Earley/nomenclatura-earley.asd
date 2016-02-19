@@ -3,4 +3,4 @@
 (defsystem :nomenclatura-earley
   :serial t
   :components
-  ())
+  ((:file "packages")))
