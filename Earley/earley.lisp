@@ -1,3 +1,5 @@
+(cl:in-package #:nomenclatura-earley)
+
 (defclass item ()
   ((symbol :initarg :symbol :reader item-symbol)))
 
