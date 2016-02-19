@@ -16,10 +16,12 @@
   ())
 
 (defclass grammar ()
-  ((items :initarg :items :initform (make-hash-table :test #'eq) :reader grammar-items)))
+  ((%rules :initarg :items
+	   :initform (make-hash-table :test #'eq)
+	   :reader rules)))
 
 (defun grammar-rules (grammar symbol)
-  (gethash symbol (grammar-items grammar)))
+  (gethash symbol (rules grammar)))
 
 (defmacro grammar (&rest rules)
   (let ((nonterminals (mapcar #'car rules)))
@@ -37,7 +39,7 @@
 			              :symbol ',(car symbols)
 			              :next ,(make-item symbol (cdr symbols)))))))
       `(let* ((grammar (make-instance 'grammar))
-	      (items (grammar-items grammar)))
+	      (items (rules grammar)))
 	 ,@(mapcar (lambda (rule)
 		     `(push ,(make-item (car rule) (cddr rule))
 		            (gethash ',(car rule) items)))
