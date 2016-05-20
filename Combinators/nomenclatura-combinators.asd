@@ -3,4 +3,4 @@
 (defsystem :nomenclatura-combinators
   :serial t
   :components
-  ())
+  ((:file "packages")))
