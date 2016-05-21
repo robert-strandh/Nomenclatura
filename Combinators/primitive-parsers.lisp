@@ -25,3 +25,19 @@
 
 (defmethod parse ((parser fail) input)
   '())
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Parser class ITEM.
+
+(defclass item (parser)
+  ())
+
+(defun item ()
+  (make-instance 'item))
+
+(defmethod parse ((parser item) input)
+  (if (input-empty-p input)
+      '()
+      (list (cons (input-first input)
+		  (input-rest input)))))
