@@ -36,3 +36,20 @@
 	  (if (apply (predicate parser) x (arguments parser))
 	      (identity x)
 	      (fail)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Parser class IS-NOT.
+
+(defclass is-not (parser)
+  ((%predicate :initarg :predicate :reader predicate)
+   (%arguments :initarg :arguments :reader arguments)))
+
+(defun is-not (predicate &rest arguments)
+  (make-instance 'is-not
+    :predicate predicate
+    :arguments arguments))
+
+(defmethod parse ((parser is-not) input)
+  (satisfies (lambda (i) 
+	       (not (apply (predicate parser) i (arguments parser))))))
