@@ -53,3 +53,20 @@
 (defmethod parse ((parser is-not) input)
   (satisfies (lambda (i) 
 	       (not (apply (predicate parser) i (arguments parser))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Parser class PLUS.
+
+(defclass plus (parser)
+  ((%parser1 :initarg parser1 :reader parser1)
+   (%parser2 :initarg parser2 :reader parser2)))
+
+(defun plus (parser1 parser2)
+  (make-instance 'plus
+    :parser1 parser1
+    :parser2 parser2))
+
+(defmethod parse ((parser plus) input)
+  (append (funcall (parser1 parser) input)
+	  (funcall (parser2 parser) input)))
