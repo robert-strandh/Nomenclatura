@@ -5,4 +5,7 @@
   :components
   ((:file "packages")
    (:file "input")
-   (:file "parser")))
+   (:file "parse")
+   (:file "parser")
+   (:file "primitive-parsers")
+   (:file "combinators")))
