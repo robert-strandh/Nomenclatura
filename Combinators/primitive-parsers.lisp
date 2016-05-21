@@ -12,3 +12,16 @@
 
 (defmethod parse ((parser identity) input)
   (list (cons (value parser) input)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Parser class FAIL.
+
+(defclass fail (parser)
+  ())
+
+(defun fail ()
+  (make-instance 'fail))
+
+(defmethod parse ((parser fail) input)
+  '())
