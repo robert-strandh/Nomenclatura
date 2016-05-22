@@ -59,8 +59,8 @@
 ;;; Parser class PLUS.
 
 (defclass plus (parser)
-  ((%parser1 :initarg parser1 :reader parser1)
-   (%parser2 :initarg parser2 :reader parser2)))
+  ((%parser1 :initarg :parser1 :reader parser1)
+   (%parser2 :initarg :parser2 :reader parser2)))
 
 (defun plus (parser1 parser2)
   (make-instance 'plus
