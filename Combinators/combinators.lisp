@@ -70,3 +70,22 @@
 (defmethod parse ((parser plus) input)
   (append (parse (parser1 parser) input)
 	  (parse (parser2 parser) input)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Parser class CONS.
+
+(defclass cons (parser)
+  ((%object :initarg :object :reader object)
+   (%parser :initarg :parser :reader parser)))
+
+(defun cons (object parser)
+  (make-instance 'cons
+    :object object
+    :parser parser))
+
+(defmethod parse ((parser cons) input)
+  (parse (bind (parser parser)
+	       (lambda (result)
+		 (identity (cl:cons (object parser) result))))
+	 input))
