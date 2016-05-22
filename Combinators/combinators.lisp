@@ -89,3 +89,21 @@
 	       (lambda (result)
 		 (identity (cl:cons (object parser) result))))
 	 input))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Parser class ZERO-OR-MORE.
+
+(defclass zero-or-more (parser)
+  ((%parser :initarg :parser :reader parser)))
+
+(defun zero-or-more (parser)
+  (make-instance 'zero-or-more
+    :parser parser))
+
+(defmethod parse ((parser zero-or-more) input)
+  (cons '()
+	(parse (bind (parser parser)
+		     (lambda (result)
+		       (cons result (zero-or-more (parser parser)))))
+	       input)))
