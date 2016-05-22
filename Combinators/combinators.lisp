@@ -68,5 +68,5 @@
     :parser2 parser2))
 
 (defmethod parse ((parser plus) input)
-  (append (funcall (parser1 parser) input)
-	  (funcall (parser2 parser) input)))
+  (append (parse (parser1 parser) input)
+	  (parse (parser2 parser) input)))
