@@ -104,7 +104,7 @@
     :parser parser))
 
 (defmethod parse ((parser zero-or-more) input)
-  (cl:cons '()
+  (cl:cons (cl:cons '() input)
 	   (parse (bind (parser parser)
 			(lambda (result)
 			  (cons result (zero-or-more (parser parser)))))
