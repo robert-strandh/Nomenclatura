@@ -14,4 +14,10 @@
    #:parse
    #:identity
    #:fail
-   #:item))
+   #:item
+   #:bind
+   #:satisfies
+   #:is-not
+   #:plus
+   #:cons
+   #:zero-or-more))
