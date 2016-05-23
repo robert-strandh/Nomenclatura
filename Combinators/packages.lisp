@@ -3,5 +3,8 @@
 (defpackage #:nomenclatura-combinators
   (:nicknames #:nclc)
   (:use #:common-lisp)
-  (:shadow #:identity #:function #:satisfies)
+  (:shadow #:identity
+	   #:function
+	   #:satisfies
+	   #:cons)
   (:export))
