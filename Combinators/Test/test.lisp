@@ -56,4 +56,5 @@
   (test-identity)
   (test-fail)
   (test-satisfies)
-  (test-is-not))
+  (test-is-not)
+  (test-plus))
