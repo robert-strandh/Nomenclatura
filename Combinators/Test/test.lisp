@@ -25,8 +25,10 @@
 (defun test-satisfies ()
   (assert (equal (nclc:parse (nclc:satisfies #'symbolp) '())
 		 '()))
-    (assert (equal (nclc:parse (nclc:satisfies #'symbolp) '(234 a b))
-		 '())))
+  (assert (equal (nclc:parse (nclc:satisfies #'symbolp) '(234 a b))
+		 '()))
+  (assert (equal (nclc:parse (nclc:satisfies #'symbolp) '(a b c))
+		 '((a b c)))))
 
 (defun test ()
   (test-identity)
