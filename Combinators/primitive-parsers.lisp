@@ -11,7 +11,7 @@
   (make-instance 'identity :value value))
 
 (defmethod parse ((parser identity) input)
-  (list (cons (value parser) input)))
+  (list (cl:cons (value parser) input)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -39,5 +39,5 @@
 (defmethod parse ((parser item) input)
   (if (input-empty-p input)
       '()
-      (list (cons (input-first input)
-		  (input-rest input)))))
+      (list (cl:cons (input-first input)
+		     (input-rest input)))))
