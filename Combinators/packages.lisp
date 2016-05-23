@@ -11,6 +11,7 @@
    #:input-empty-p
    #:input-first
    #:input-rest
+   #:parse
    #:identity
    #:fail
    #:item))
