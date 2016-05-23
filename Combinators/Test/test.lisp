@@ -11,5 +11,7 @@
 
 
 (defun test-identity ()
+  (assert (equal (nclc:parse (nclc:identity 234) '())
+		 '((234))))
   (assert (equal (nclc:parse (nclc:identity 234) '(a b c))
 		 '((234 a b c)))))
