@@ -31,11 +31,12 @@
     :arguments arguments))
 
 (defmethod parse ((parser satisfies) input)
-  (bind (item) 
-	(lambda (x) 
-	  (if (apply (predicate parser) x (arguments parser))
-	      (identity x)
-	      (fail)))))
+  (parse (bind (item)
+	       (lambda (x)
+		 (if (apply (predicate parser) x (arguments parser))
+		     (identity x)
+		     (fail))))
+	 input))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
