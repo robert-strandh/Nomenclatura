@@ -22,6 +22,10 @@
   (assert (equal (nclc:parse (nclc:fail) '(a b c))
 		 '())))
 
+(defun test-satisfies ()
+  (assert (equal (nclc:parse (nclc:satisfies #'symbolp) '())
+		 '())))
+
 (defun test ()
   (test-identity)
   (test-fail))
