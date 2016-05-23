@@ -7,4 +7,7 @@
 	   #:function
 	   #:satisfies
 	   #:cons)
-  (:export))
+  (:export
+   #:input-empty-p
+   #:input-first
+   #:input-rest))
