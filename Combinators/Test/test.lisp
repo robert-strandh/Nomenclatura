@@ -23,4 +23,5 @@
 		 '())))
 
 (defun test ()
-  (test-identity))
+  (test-identity)
+  (test-fail))
