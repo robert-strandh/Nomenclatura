@@ -16,5 +16,11 @@
   (assert (equal (nclc:parse (nclc:identity 234) '(a b c))
 		 '((234 a b c)))))
 
+(defun test-fail ()
+  (assert (equal (nclc:parse (nclc:fail) '())
+		 '()))
+  (assert (equal (nclc:parse (nclc:fail) '(a b c))
+		 '())))
+
 (defun test ()
   (test-identity))
