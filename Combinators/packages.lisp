@@ -10,4 +10,7 @@
   (:export
    #:input-empty-p
    #:input-first
-   #:input-rest))
+   #:input-rest
+   #:identity
+   #:fail
+   #:item))
