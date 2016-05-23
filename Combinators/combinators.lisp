@@ -107,5 +107,5 @@
   (cl:cons '()
 	   (parse (bind (parser parser)
 			(lambda (result)
-			  (cl:cons result (zero-or-more (parser parser)))))
+			  (cons result (zero-or-more (parser parser)))))
 		  input)))
