@@ -32,4 +32,5 @@
 
 (defun test ()
   (test-identity)
-  (test-fail))
+  (test-fail)
+  (test-satisfies))
