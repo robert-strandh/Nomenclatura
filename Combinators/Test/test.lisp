@@ -30,6 +30,14 @@
   (assert (equal (nclc:parse (nclc:satisfies #'symbolp) '(a b c))
 		 '((a b c)))))
 
+(defun test-is-not ()
+  (assert (equal (nclc:parse (nclc:is-not #'symbolp) '())
+		 '()))
+  (assert (equal (nclc:parse (nclc:is-not #'symbolp) '(234 a b))
+		 '((234 a b))))
+  (assert (equal (nclc:parse (nclc:is-not #'symbolp) '(a b c))
+		 '())))
+
 (defun test ()
   (test-identity)
   (test-fail)
