@@ -52,8 +52,9 @@
     :arguments arguments))
 
 (defmethod parse ((parser is-not) input)
-  (satisfies (lambda (i) 
-	       (not (apply (predicate parser) i (arguments parser))))))
+  (parse (satisfies (lambda (i)
+		      (not (apply (predicate parser) i (arguments parser)))))
+	 input))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
