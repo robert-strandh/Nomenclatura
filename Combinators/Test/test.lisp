@@ -42,7 +42,11 @@
   (assert (equal (nclc:parse (nclc:plus (nclc:satisfies #'symbolp)
 					(nclc:satisfies #'numberp))
 			     '())
-		 '())))
+		 '()))
+  (assert (equal (nclc:parse (nclc:plus (nclc:satisfies #'symbolp)
+					(nclc:satisfies #'numberp))
+			     '(a b c))
+		 '((a b c)))))
 
 (defun test ()
   (test-identity)
