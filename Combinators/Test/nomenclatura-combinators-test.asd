@@ -4,4 +4,5 @@
   :depends-on (:nomenclatura-combinators)
   :serial t
   :components
-  ((:file "packages")))
+  ((:file "packages")
+   (:file "test")))
