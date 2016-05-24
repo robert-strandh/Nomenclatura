@@ -67,4 +67,5 @@
   (test-fail)
   (test-satisfies)
   (test-is-not)
-  (test-plus))
+  (test-plus)
+  (test-cons))
