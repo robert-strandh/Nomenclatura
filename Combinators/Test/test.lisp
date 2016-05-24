@@ -60,7 +60,11 @@
   (assert (equal (nclc:parse (nclc:cons 234
 					(nclc:satisfies #'numberp))
 			     '())
-		 '())))
+		 '()))
+  (assert (equal (nclc:parse (nclc:cons 234
+					(nclc:satisfies #'numberp))
+			     '(222 a b))
+		 '(((234 . 222) a b)))))
 
 (defun test ()
   (test-identity)
