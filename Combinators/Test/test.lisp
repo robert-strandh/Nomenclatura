@@ -56,6 +56,12 @@
 			     '(234 b c))
 		 '((234 b c) (234 b c)))))
 
+(defun test-cons ()
+  (assert (equal (nclc:parse (nclc:cons 234
+					(nclc:satisfies #'numberp))
+			     '())
+		 '())))
+
 (defun test ()
   (test-identity)
   (test-fail)
