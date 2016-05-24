@@ -113,3 +113,20 @@
 			(lambda (result)
 			  (cons result (zero-or-more (parser parser)))))
 		  input)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Parser class ONE-OR-MORE.
+
+(defclass one-or-more (parser)
+  ((%parser :initarg :parser :reader parser)))
+
+(defun one-or-more (parser)
+  (make-instance 'one-or-more
+    :parser parser))
+
+(defmethod parse ((parser one-or-more) input)
+  (parse (bind (parser parser)
+	       (lambda (result)
+		 (cons result (zero-or-more (parser parser)))))
+	 input))
