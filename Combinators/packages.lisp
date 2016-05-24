@@ -20,4 +20,5 @@
    #:is-not
    #:plus
    #:cons
-   #:zero-or-more))
+   #:zero-or-more
+   #:one-or-more))
