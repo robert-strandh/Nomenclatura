@@ -76,6 +76,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Parser class CONS.
+;;;
+;;; This parser contains an arbitrary object and a parser P.  First, P
+;;; is used to parse the input.  Then for each result, a new result is
+;;; computed by calling CL:CONS on the object and the result from P.
 
 (defclass cons (parser)
   ((%object :initarg :object :reader object)
