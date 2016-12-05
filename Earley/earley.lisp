@@ -1,7 +1,7 @@
 (cl:in-package #:nomenclatura-earley)
 
 (defclass item ()
-  ((symbol :initarg :symbol :reader item-symbol)))
+  ((%symbol :initarg :symbol :reader symbol)))
 
 (defclass internal-item (item)
   ((next :initarg :next :reader item-next)))
@@ -93,12 +93,12 @@
 (defmethod process-suffix ((suffix-item predictor-item) suffix-state state)
   (unless (suffix-in-state-p suffix-item suffix-state state)
     (add-suffix-to-state suffix-item suffix-state state)
-    (predict (item-symbol suffix-item) (item-grammar suffix-item) state)))
+    (predict (symbol suffix-item) (item-grammar suffix-item) state)))
   
 (defmethod process-suffix ((suffix-item completer-item) suffix-state state)
-  (loop with symbol = (item-symbol suffix-item)
+  (loop with symbol = (symbol suffix-item)
 	for suffix in (predictor-suffixes suffix-state)
-	do (when (eq symbol (item-symbol (suffix-item suffix)))
+	do (when (eq symbol (symbol (suffix-item suffix)))
 	     (process-suffix (item-next (suffix-item suffix))
 			     (suffix-state suffix)
 			     state))))
@@ -120,7 +120,7 @@
 	  do (let ((new-state (make-instance 'parser-state))
 		   (token (pop stream)))
 	       (loop for suffix in (scanner-suffixes state) do
-		     (when (eq token (item-symbol (suffix-item suffix)))
+		     (when (eq token (symbol (suffix-item suffix)))
 		       (process-suffix (item-next (suffix-item suffix))
 				       (suffix-state suffix)
 				       new-state)))
@@ -128,7 +128,7 @@
 	       (setf state new-state)))
     (print (if (member terminator
 		       (scanner-suffixes state)
-		       :key (lambda (s) (item-symbol (suffix-item s)))
+		       :key (lambda (s) (symbol (suffix-item s)))
 		       :test #'eq)
 	       'YES
 	       'NO))))
