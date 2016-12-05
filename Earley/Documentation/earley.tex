@@ -25,11 +25,13 @@ do not modify those objects.\ }
 
 \subsection{Introduction}
 
-An Earley parser is a parser that can handle all context-free
-grammars, even ambiguous ones.  The worst-case complexity is $O(n^3)$
-where $n$ is the length of the input string.  However, this worst-case
-behavior is rare, and for a large class of reasonable grammars the
-worst-case complexity is linear, or at most quadratic.  
+An Earley \cite{Earley:1983:ECP:357980.358005,
+  Earley:1970:ECP:362007.362035} parser is a parser that can handle
+all context-free grammars, even ambiguous ones.  The worst-case
+complexity is $O(n^3)$ where $n$ is the length of the input string.
+However, this worst-case behavior is rare, and for a large class of
+reasonable grammars the worst-case complexity is linear, or at most
+quadratic.
 
 In addition, an Earley parser is ideal for grammars that may change
 dynamically.  Earley parsing requires little or no preprocessing of
