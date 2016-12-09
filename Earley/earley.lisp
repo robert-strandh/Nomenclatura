@@ -1,18 +1,18 @@
 (cl:in-package #:nomenclatura-earley)
 
-(defclass item ()
+(defclass lr0-item ()
   ((%symbol :initarg :symbol :reader symbol)))
 
-(defclass internal-item (item)
-  ((next :initarg :next :reader item-next)))
+(defclass internal-lr0-item (lr0-item)
+  ((%next :initarg :next :reader next)))
 
-(defclass scanner-item (internal-item)
+(defclass scanner-lr0-item (internal-lr0-item)
   ())
 
-(defclass predictor-item (internal-item)
+(defclass predictor-lr0-item (internal-lr0-item)
   ((grammar :initarg :grammar :reader item-grammar)))
 
-(defclass completer-item (item)
+(defclass completer-lr0-item (item)
   ())
 
 (defclass grammar ()
@@ -27,15 +27,15 @@
   (let ((nonterminals (mapcar #'car rules)))
     (labels ((make-item (symbol symbols)
 	       (cond ((null symbols)
-		      `(make-instance 'completer-item
+		      `(make-instance 'completer-lr0-item
 			              :symbol ',symbol))
 		     ((member (car symbols) nonterminals)
-		      `(make-instance 'predictor-item
+		      `(make-instance 'predictor-lr0-item
 			              :symbol ',(car symbols)
 			              :grammar grammar
 			              :next ,(make-item symbol (cdr symbols))))
 		     (t
-		      `(make-instance 'scanner-item
+		      `(make-instance 'scanner-lr0-item
 			              :symbol ',(car symbols)
 			              :next ,(make-item symbol (cdr symbols)))))))
       `(let* ((grammar (make-instance 'grammar))
@@ -46,61 +46,61 @@
 		   rules)
 	 grammar))))						  
 
-(defclass suffix ()
-  ((item :initarg :item :reader suffix-item)
-   (state :initarg :state :reader suffix-state)))
+(defclass earley-item ()
+  ((%lr0-item :initarg :item :reader lr0-item)
+   (%state :initarg :state :reader state)))
 
-(defun compare-suffix (suffix-item suffix-state suffix)
-  (and (eq suffix-item (suffix-item suffix))
-       (eq suffix-state (suffix-state suffix))))
+(defun compare-earley-item (lr0-item state earley-item)
+  (and (eq lr0-item (lr0-item earley-item))
+       (eq state (state earley-item))))
 
 (defclass parser-state ()
-  ((predictor-suffixes :initform '() :accessor predictor-suffixes)
-   (scanner-suffixes :initform '() :accessor scanner-suffixes)))
+  ((%predictor-earley-items :initform '() :accessor predictor-earley-items)
+   (5scanner-earley-items :initform '() :accessor scanner-earley-items)))
 
-(defgeneric suffix-in-state-p (suffix-item suffix-state state))
+(defgeneric earley-item-in-state-p (lr0-item state state))
 
-(defmethod suffix-in-state-p ((suffix-item scanner-item) suffix-state state)
-  (member-if (lambda (suffix)
-	       (compare-suffix suffix-item suffix-state suffix))
-	     (scanner-suffixes state)))
+(defmethod earley-item-in-state-p ((lr0-item scanner-lr0-item) state state)
+  (member-if (lambda (earley-item)
+	       (compare-earley-item lr0-item state earley-item))
+	     (scanner-earley-items state)))
 
-(defmethod suffix-in-state-p ((suffix-item predictor-item) suffix-state state)
-  (member-if (lambda (suffix)
-	       (compare-suffix suffix-item suffix-state suffix))
-	     (predictor-suffixes state)))
+(defmethod earley-item-in-state-p ((lr0-item predictor-lr0-item) state state)
+  (member-if (lambda (earley-item)
+	       (compare-earley-item lr0-item state earley-item))
+	     (predictor-earley-items state)))
 
-(defgeneric add-suffix-to-state (suffix-item suffix-state state))
+(defgeneric add-earley-item-to-state (lr0-item state state))
 
-(defmethod add-suffix-to-state ((suffix-item scanner-item) suffix-state state)
-  (push (make-instance 'suffix :item suffix-item :state suffix-state)
-	(scanner-suffixes state)))
+(defmethod add-earley-item-to-state ((lr0-item scanner-lr0-item) state state)
+  (push (make-instance 'earley-item :item lr0-item :state state)
+	(scanner-earley-items state)))
 
-(defmethod add-suffix-to-state ((suffix-item predictor-item) suffix-state state)
-  (push (make-instance 'suffix :item suffix-item :state suffix-state)
-	(predictor-suffixes state)))
+(defmethod add-earley-item-to-state ((lr0-item predictor-lr0-item) state state)
+  (push (make-instance 'earley-item :item lr0-item :state state)
+	(predictor-earley-items state)))
 
 (defun predict (symbol grammar state)
   (loop for item in (grammar-rules grammar symbol)
-	do (process-suffix item state state)))
+	do (process-earley-item item state state)))
 
-(defgeneric process-suffix (suffix-item suffix-state state))
+(defgeneric process-earley-item (lr0-item state state))
 
-(defmethod process-suffix ((suffix-item scanner-item) suffix-state state)
-  (unless (suffix-in-state-p suffix-item suffix-state state)
-    (add-suffix-to-state suffix-item suffix-state state)))
+(defmethod process-earley-item ((lr0-item scanner-lr0-item) state state)
+  (unless (earley-item-in-state-p lr0-item state state)
+    (add-earley-item-to-state lr0-item state state)))
 
-(defmethod process-suffix ((suffix-item predictor-item) suffix-state state)
-  (unless (suffix-in-state-p suffix-item suffix-state state)
-    (add-suffix-to-state suffix-item suffix-state state)
-    (predict (symbol suffix-item) (item-grammar suffix-item) state)))
+(defmethod process-earley-item ((lr0-item predictor-lr0-item) state state)
+  (unless (earley-item-in-state-p lr0-item state state)
+    (add-earley-item-to-state lr0-item state state)
+    (predict (symbol lr0-item) (item-grammar lr0-item) state)))
   
-(defmethod process-suffix ((suffix-item completer-item) suffix-state state)
-  (loop with symbol = (symbol suffix-item)
-	for suffix in (predictor-suffixes suffix-state)
-	do (when (eq symbol (symbol (suffix-item suffix)))
-	     (process-suffix (item-next (suffix-item suffix))
-			     (suffix-state suffix)
+(defmethod process-earley-item ((lr0-item completer-lr0-item) state state)
+  (loop with symbol = (symbol lr0-item)
+	for earley-item in (predictor-earley-items state)
+	do (when (eq symbol (symbol (lr0-item earley-item)))
+	     (process-earley-item (next (lr0-item earley-item))
+			     (state earley-item)
 			     state))))
 
 (defun parse (grammar symbol stream)
@@ -108,27 +108,27 @@
 	 (state initial-state)
 	 (terminator (gensym))
 	 (item (make-instance
-		'predictor-item
+		'predictor-lr0-item
 		:symbol symbol
 		:grammar grammar
 		:next (make-instance
-		       'scanner-item
+		       'scanner-lr0-item
 		       :symbol terminator
 		       :next nil))))
-    (process-suffix item initial-state initial-state)
+    (process-earley-item item initial-state initial-state)
     (loop while stream
 	  do (let ((new-state (make-instance 'parser-state))
 		   (token (pop stream)))
-	       (loop for suffix in (scanner-suffixes state) do
-		     (when (eq token (symbol (suffix-item suffix)))
-		       (process-suffix (item-next (suffix-item suffix))
-				       (suffix-state suffix)
+	       (loop for earley-item in (scanner-earley-items state) do
+		     (when (eq token (symbol (lr0-item earley-item)))
+		       (process-earley-item (next (lr0-item earley-item))
+				       (state earley-item)
 				       new-state)))
-	       ;; (setf (scanner-suffixes state) nil)
+	       ;; (setf (scanner-earley-items state) nil)
 	       (setf state new-state)))
     (print (if (member terminator
-		       (scanner-suffixes state)
-		       :key (lambda (s) (symbol (suffix-item s)))
+		       (scanner-earley-items state)
+		       :key (lambda (s) (symbol (lr0-item s)))
 		       :test #'eq)
 	       'YES
 	       'NO))))
