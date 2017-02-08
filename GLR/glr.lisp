@@ -471,5 +471,3 @@
 
 (defparameter *tomita-parser*
     (make-instance 'parser :grammar *tomita* :lexer *tomita-lexer*))
-
-
