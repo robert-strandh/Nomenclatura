@@ -14,15 +14,15 @@
 	 (sym-of (arg)
 	   (if (symbolp arg) arg (cadr arg))))
     `(make-instance 'rule
-	:left-hand-side ',left-hand-side
-        :right-hand-side ',(mapcar #'sym-of arglist)
-	:builder
-         (lambda ,(mapcar #'var-of arglist)
-	   (declare (ignorable ,@(mapcar #'var-of arglist)))
-	   ,(if (or (null body)
-		    (symbolp (car body)))
-		`(make-instance ',left-hand-side ,@body)
-		`(progn ,@body))))))
+       :left-hand-side ',left-hand-side
+       :right-hand-side ',(mapcar #'sym-of arglist)
+       :builder
+       (lambda ,(mapcar #'var-of arglist)
+         (declare (ignorable ,@(mapcar #'var-of arglist)))
+         ,(if (or (null body)
+                  (symbolp (car body)))
+              `(make-instance ',left-hand-side ,@body)
+              `(progn ,@body))))))
 
 (defmethod print-object ((obj rule) stream)
   (format stream "[~a -> ~a]"
@@ -169,8 +169,8 @@
 ;;; dont't try to find an existing state
 (defun make-new-shift-state (items transitions grammar)
   (let ((new (make-instance 'shift-state
-			    :items items
-			    :transitions transitions)))
+               :items items
+               :transitions transitions)))
     (push new (states grammar))
     new))
 
@@ -178,10 +178,10 @@
 (defun make-new-epsilon-terminal-states (items transitions grammar)
   (mapcar (lambda (item)
 	    (let ((new (make-instance 'epsilon-terminal-state
-				      :items (list item)
-				      :transition (cdar (member (left-hand-side (item-rule item))
-								transitions
-								:key #'car :test #'eq)))))
+                         :items (list item)
+                         :transition (cdar (member (left-hand-side (item-rule item))
+                                                   transitions
+                                                   :key #'car :test #'eq)))))
 	      (push new (states grammar))
 	      new))
 	  items))
@@ -192,7 +192,7 @@
 					       (artificial-start grammar))
 					   'final-state
 					   'normal-terminal-state)
-				       :items (list item)))
+                          :items (list item)))
 		   (existing (find new (states grammar) :test #'state-equal)))
 	      (if (null existing)
 		  (progn (push new (states grammar))
@@ -239,8 +239,8 @@
   (with-slots (start-state artificial-start) grammar
     (let* ((unique (gensym))
 	   (start-rule (make-instance 'rule
-				      :left-hand-side unique
-				      :right-hand-side (list (start grammar))))
+                         :left-hand-side unique
+                         :right-hand-side (list (start grammar))))
 	   (items (closure (list (make-item start-rule 0)) grammar)))
       (setf artificial-start unique
 	    start-state (make-instance 'lr0-state :items items))))
@@ -470,4 +470,4 @@
 		prep det n)))
 
 (defparameter *tomita-parser*
-    (make-instance 'parser :grammar *tomita* :lexer *tomita-lexer*))
+  (make-instance 'parser :grammar *tomita* :lexer *tomita-lexer*))
