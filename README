@@ -1,4 +1,4 @@
 This project is a collection of parser generators of different types.
 At the moment, it just contains some random code that I found spread
 out on my computer, and I wanted to collect that code together in a
-library.
+library.  We may or may turn it into something more useful.
